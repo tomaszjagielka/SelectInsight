@@ -19,14 +19,14 @@ const Content: React.FC = () => {
 
   function extractSurroundingText(mainText, searchText, charactersBefore, charactersAfter) {
     const index = mainText.indexOf(searchText);
-  
+
     if (index === -1) {
       return mainText.substring(0, charactersBefore + charactersAfter).replace(/\n/g, ' ');
     }
-  
+
     const start = Math.max(0, index - charactersBefore);
     const end = Math.min(mainText.length, index + searchText.length + charactersAfter);
-  
+
     return mainText.substring(start, end).replace(/\n/g, ' ');
   }
 

@@ -99,7 +99,7 @@ const handler: PlasmoMessaging.PortHandler = async (req, res) => {
       const { done, value } = await resRead.read()
 
       if (done) {
-        break 
+        break
       }
 
       if (done === undefined || value === undefined) {

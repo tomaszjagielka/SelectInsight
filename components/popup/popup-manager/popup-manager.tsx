@@ -53,7 +53,7 @@ const PopupManager: React.FC<IPopupManager> = ({ contentHeaderText, surroundingT
 
         if (rect.top === 0 && rect.left === 0 && popups.length > 0) {
           const lastPopup = popups[popups.length - 1];
-          openPopup({ x: lastPopup.position.x + 20,  y: lastPopup.position.y + 20 });
+          openPopup({ x: lastPopup.position.x + 20, y: lastPopup.position.y + 20 });
         } else {
           openPopup({ x: rect.left, y: rect.top });
         }
