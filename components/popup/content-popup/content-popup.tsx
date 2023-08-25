@@ -1,6 +1,7 @@
 import styleText from "data-text:./content-popup.scss";
 import React, { useState, useEffect } from 'react';
 import Draggable from 'react-draggable';
+import Markdown from 'markdown-to-jsx'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faSpinner } from '@fortawesome/free-solid-svg-icons';
 import { faTimes } from '@fortawesome/free-solid-svg-icons';
@@ -33,7 +34,6 @@ const ContentPopup: React.FC<IContentPopup> = ({ isOpen, position: initialPositi
       setPopupPosition({ x: position.x + window.scrollX, y: position.y + window.scrollY });
       setPopupStyle({ ...popupStyle, position: 'absolute' });
     }
-    console.log(pin);
   }, [pin]);
 
   const updatePopupPosition = (event, ui) => {
@@ -47,10 +47,12 @@ const ContentPopup: React.FC<IContentPopup> = ({ isOpen, position: initialPositi
       <Draggable handle="h3" position={{ x: position.x, y: position.y }} onDrag={updatePopupPosition}>
         {isOpen && (
           <div className="popup" style={popupStyle} onClick={handlePopupClick}>
-            <h3>{headerContent}</h3>
-
+            <h3 className="popup-header">{headerContent}</h3>
+            
             {textContent ? (
-              <div className="popup-content">{textContent}</div>
+              <div className="popup-content">
+                <Markdown>{textContent}</Markdown>
+              </div>
             ) : (
               <div className="spinner-container">
                 <FontAwesomeIcon className="icon popup-content-spinner" icon={faSpinner} />

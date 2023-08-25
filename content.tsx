@@ -4,12 +4,17 @@ import PopupManager from '~components/popup/popup-manager/popup-manager';
 const Content: React.FC = () => {
   const [selectedText, setSelectedText] = useState('');
   const [surroundingText, setSurroundingText] = useState('');
+  const [mousePosition, setMousePosition] = useState({x: 0, y: 0});
 
   const handleMouseUp = (event: MouseEvent) => {
     const selectedText = getSelectedText();
+
     if (selectedText) {
+      setMousePosition({x: event.clientX, y: event.clientY});
       setSelectedText(selectedText.trim());
       setSurroundingText(extractSurroundingText(document.body.innerText, selectedText, 1000, 1000));
+    } else {
+      setSelectedText('');
     }
   };
 
@@ -46,7 +51,7 @@ const Content: React.FC = () => {
 
   return (
     <div>
-      <PopupManager contentHeaderText={selectedText} surroundingText={surroundingText} />
+      <PopupManager contentHeaderText={selectedText} surroundingText={surroundingText} mousePosition={mousePosition} />
     </div>
   );
 };

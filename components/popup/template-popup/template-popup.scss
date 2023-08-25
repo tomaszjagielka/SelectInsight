@@ -1,0 +1,28 @@
+.popup {
+  position: absolute;
+  background-color: #fff;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  font-size: 16px;
+  line-height: 150%;
+  width: 200px;
+}
+
+.templates {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.template {
+  font-family: sans-serif;
+  color: black;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+
+  &:hover {
+    background-color: #f0f0f0;
+  }
+}

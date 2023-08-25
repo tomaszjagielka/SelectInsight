@@ -1,37 +1,44 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import ContentPopup, { type IContentPopup } from '~components/popup/content-popup/content-popup';
 import { getPort } from "@plasmohq/messaging/port";
+import TemplatePopup from '../template-popup/template-popup';
 
 export interface IPopupManager {
   contentHeaderText: string;
   surroundingText: string;
+  mousePosition: { x: number, y: number }
 }
 
-const PopupManager: React.FC<IPopupManager> = ({ contentHeaderText, surroundingText }) => {
-  const [popups, setPopups] = useState<IContentPopup[]>([]);
+const PopupManager: React.FC<IPopupManager> = ({ contentHeaderText, surroundingText, mousePosition }) => {
+  const [contentPopups, setContentPopups] = useState<IContentPopup[]>([]);
+  const [templatePopupPosition, setTemplatePopupPosition] = useState({ x: 0, y: 0 });
+  const [isTemplatePopupOpen, setIsTemplatePopupOpen] = useState(false);
+  const [lastContentHeaderText, setLastContentHeaderTest] = useState('');
+  const templatePopupRef = useRef(null);
   // const [closeAllPopups, setCloseAllPopups] = useState(false);
   const aiPort = getPort('ai');
 
-  const openPopup = (position: { x: number; y: number }) => {
+  const openContentPopup = (position: { x: number; y: number }) => {
     const newPopup: IContentPopup = {
       isOpen: true,
-      contentHeaderText: contentHeaderText,
+      // contentHeaderText: contentHeaderText,
+      contentHeaderText: lastContentHeaderText,
       contentText: '',
       position: position,
     };
-    setPopups(prevPopups => [...prevPopups, newPopup]);
+    setContentPopups(prevPopups => [...prevPopups, newPopup]);
   };
 
-  const closePopup = (index: number) => {
-    setPopups(prevPopups => {
-      const updatedPopups = [...prevPopups];
-      updatedPopups[index].isOpen = false;
-      return updatedPopups;
+  const closeContentPopup = (index: number) => {
+    setContentPopups(prevContentPopups => {
+      const updatedContentPopups = [...prevContentPopups];
+      updatedContentPopups[index].isOpen = false;
+      return updatedContentPopups;
     });
   };
 
   const updateLastPopupContent = (contentText: string) => {
-    setPopups(prevPopups => {
+    setContentPopups(prevPopups => {
       const updatedPopups = [...prevPopups];
       if (updatedPopups.length > 0) {
         const lastPopupIndex = updatedPopups.length - 1;
@@ -40,26 +47,6 @@ const PopupManager: React.FC<IPopupManager> = ({ contentHeaderText, surroundingT
       return updatedPopups;
     });
   };
-
-  useEffect(() => {
-    if (contentHeaderText) {
-      const message = `Describe briefly "${contentHeaderText}" in this content: "${surroundingText}"`
-      aiPort.postMessage({ body: message });
-
-      const selection = window.getSelection();
-      if (selection?.rangeCount > 0) {
-        const range = selection.getRangeAt(0);
-        const rect = range.getBoundingClientRect();
-
-        if (rect.top === 0 && rect.left === 0 && popups.length > 0) {
-          const lastPopup = popups[popups.length - 1];
-          openPopup({ x: lastPopup.position.x + 20, y: lastPopup.position.y + 20 });
-        } else {
-          openPopup({ x: rect.left, y: rect.top });
-        }
-      }
-    }
-  }, [contentHeaderText]);
 
   let isPopupAnswer = false;
   const messageListener = (msg: MessageEvent) => {
@@ -94,12 +81,41 @@ const PopupManager: React.FC<IPopupManager> = ({ contentHeaderText, surroundingT
     }
   };
 
-  // useEffect(() => {
-  //   if (closeAllPopups) {
-  //     setPopups([]);
-  //     setCloseAllPopups(false);
-  //   }
-  // }, [closeAllPopups]);
+  const setSelectedTemplate = (template: string) => {
+    if (!lastContentHeaderText || !surroundingText) {
+      return;
+    }
+
+    const message = `Provide concise, complete and simple explanation of:\n${lastContentHeaderText}\n\nYou might use this:\n"${surroundingText}"`
+
+    aiPort.postMessage({ body: message });
+
+    const selection = window.getSelection();
+    if (selection?.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      const rect = range.getBoundingClientRect();
+
+      if (rect.top === 0 && rect.left === 0 && contentPopups.length > 0) {
+        const lastPopup = contentPopups[contentPopups.length - 1];
+        openContentPopup({ x: lastPopup.position.x + 20, y: lastPopup.position.y + 20 });
+      } else {
+        // openContentPopup({ x: rect.left, y: rect.top });
+        openContentPopup(mousePosition);
+      }
+    }
+  };
+  
+  useEffect(() => {
+    if (templatePopupRef.current && !templatePopupRef.current.contains(event.target) && !contentHeaderText) {
+      setIsTemplatePopupOpen(false);
+    } else if (contentHeaderText) {
+      setIsTemplatePopupOpen(true);
+    }
+
+    if (contentHeaderText) {
+      setLastContentHeaderTest(contentHeaderText);
+    }
+  }, [contentHeaderText]);
 
   useEffect(() => {
     aiPort.onMessage.addListener(messageListener);
@@ -109,17 +125,33 @@ const PopupManager: React.FC<IPopupManager> = ({ contentHeaderText, surroundingT
     };
   }, []);
 
+  // useEffect(() => {
+  //   if (closeAllPopups) {
+  //     setPopups([]);
+  //     setCloseAllPopups(false);
+  //   }
+  // }, [closeAllPopups]);
+
   return (
     <div>
-      {popups.map((popup, index) => (
-        popup.isOpen && (
+      {isTemplatePopupOpen && (
+        <div ref={templatePopupRef}>
+          <TemplatePopup
+            onSelectTemplate={(template) => setSelectedTemplate(template)}
+            position={{ x: mousePosition.x, y: mousePosition.y + window.scrollY }}
+          />
+        </div>
+      )}
+
+      {contentPopups.map((contentPopup, index) => (
+        contentPopup.isOpen && (
           <ContentPopup
             key={index}
-            isOpen={popup.isOpen}
-            onClose={() => closePopup(index)}
-            position={popup.position}
-            contentHeaderText={popup.contentHeaderText}
-            contentText={popup.contentText}
+            isOpen={contentPopup.isOpen}
+            onClose={() => closeContentPopup(index)}
+            position={contentPopup.position}
+            contentHeaderText={contentPopup.contentHeaderText}
+            contentText={contentPopup.contentText}
           />
         )
       ))}
