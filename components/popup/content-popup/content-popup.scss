@@ -38,8 +38,7 @@
           background-color: #f0f0f0;
         }
 
-        .close-btn,
-        .pin-btn {
+        .btn {
           width: 20px;
           height: 20px;
         }
@@ -83,7 +82,7 @@
     }
   }
 
-  .pin-btn.pinned {
+  .btn.pinned {
     transform: rotate(45deg);
   }
 

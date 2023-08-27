@@ -12,13 +12,13 @@ export interface IPopupManager {
 const PopupManager: React.FC<IPopupManager> = ({ selectedText, surroundingText, mousePosition }) => {
   const [contentPopups, setContentPopups] = useState<IContentPopup[]>([]);
   const [contentPopupPosition, setContentPopupPosition] = useState({ x: 0, y: 0 });
+  const [topmostContentPopupZIndex, setContentPopupZIndex] = useState(0);
   const [templatePopupPosition, setTemplatePopupPosition] = useState({ x: 0, y: 0 });
   const [isTemplatePopupOpen, setIsTemplatePopupOpen] = useState(false);
   const [lastSelectedText, setLastSelectedText] = useState('');
   const [headerText, setHeaderText] = useState('');
   const [templateText, setTemplateText] = useState('');
 
-  const templatePopupRef = useRef(null);
   // const [closeAllPopups, setCloseAllPopups] = useState(false);
   const aiPort = getPort('ai');
 
@@ -28,6 +28,7 @@ const PopupManager: React.FC<IPopupManager> = ({ selectedText, surroundingText, 
       selectedText: headerText,
       contentText: '',
       position: position,
+      topmostZIndex: topmostContentPopupZIndex,
     };
     setContentPopups(prevPopups => [...prevPopups, newPopup]);
   };
@@ -89,6 +90,10 @@ const PopupManager: React.FC<IPopupManager> = ({ selectedText, surroundingText, 
     setTemplateText(template.content);
   }
 
+  const handleTemplatePopupOutsideClick = () => {
+    setIsTemplatePopupOpen(false);
+  };
+
   useEffect(() => {
     if (!headerText || !templateText || !surroundingText) {
       return;
@@ -97,19 +102,13 @@ const PopupManager: React.FC<IPopupManager> = ({ selectedText, surroundingText, 
     setIsTemplatePopupOpen(false);
 
     const message = templateText
-      .replace('{selectedText}', headerText)
+      .replace('{selectedText}', lastSelectedText)
       .replace('{surroundingText}', surroundingText);
 
     aiPort.postMessage({ body: message });
 
     openContentPopup(contentPopupPosition);
   }, [headerText, templateText]);
-
-  const handleTemplatePopupOutsideClick = (event) => {
-    if (templatePopupRef?.current && !templatePopupRef?.current?.contains(event.target)) {
-      setIsTemplatePopupOpen(false);
-    }
-  };
 
   useEffect(() => {
     if (selectedText) {
@@ -138,6 +137,7 @@ const PopupManager: React.FC<IPopupManager> = ({ selectedText, surroundingText, 
 
     return () => {
       aiPort.onMessage.removeListener(messageListener);
+      document.body.removeEventListener('mouseup', handleTemplatePopupOutsideClick)
     };
   }, []);
 
@@ -151,12 +151,10 @@ const PopupManager: React.FC<IPopupManager> = ({ selectedText, surroundingText, 
   return (
     <div>
       {isTemplatePopupOpen && (
-        <div ref={templatePopupRef}>
-          <TemplatePopup
-            position={templatePopupPosition}
-            onSelectTemplate={(template) => setupContentPopup(template)}
-          />
-        </div>
+        <TemplatePopup
+          position={templatePopupPosition}
+          onSelectTemplate={(template) => setupContentPopup(template)}
+        />
       )}
 
       <div>
@@ -165,10 +163,12 @@ const PopupManager: React.FC<IPopupManager> = ({ selectedText, surroundingText, 
             <ContentPopup
               key={index}
               isOpen={contentPopup.isOpen}
-              onClose={() => closeContentPopup(index)}
+              topmostZIndex={topmostContentPopupZIndex}
               position={contentPopup.position}
               selectedText={contentPopup.selectedText}
               contentText={contentPopup.contentText}
+              onClose={() => closeContentPopup(index)}
+              setZIndex={(zIndex) => setContentPopupZIndex(zIndex)}
             />
           )
         ))}

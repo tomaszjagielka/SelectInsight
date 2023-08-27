@@ -32,7 +32,7 @@ const Content: React.FC = () => {
     const start = Math.max(0, index - charactersBefore);
     const end = Math.min(mainText.length, index + searchText.length + charactersAfter);
 
-    return mainText.substring(start, end).replace(/\n/g, ' ');
+    return mainText.substring(start, end).replace(/\n/g, ' ').trim();
   }
 
   useEffect(() => {
