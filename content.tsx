@@ -51,7 +51,7 @@ const Content: React.FC = () => {
 
   return (
     <div>
-      <PopupManager contentHeaderText={selectedText} surroundingText={surroundingText} mousePosition={mousePosition} />
+      <PopupManager selectedText={selectedText} surroundingText={surroundingText} mousePosition={mousePosition} />
     </div>
   );
 };

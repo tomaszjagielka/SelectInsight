@@ -1,19 +1,23 @@
 import React, { useState, useEffect, useRef } from 'react';
 import ContentPopup, { type IContentPopup } from '~components/popup/content-popup/content-popup';
 import { getPort } from "@plasmohq/messaging/port";
-import TemplatePopup from '../template-popup/template-popup';
+import TemplatePopup, { type ITemplate } from '../template-popup/template-popup';
 
 export interface IPopupManager {
-  contentHeaderText: string;
+  selectedText: string;
   surroundingText: string;
   mousePosition: { x: number, y: number }
 }
 
-const PopupManager: React.FC<IPopupManager> = ({ contentHeaderText, surroundingText, mousePosition }) => {
+const PopupManager: React.FC<IPopupManager> = ({ selectedText, surroundingText, mousePosition }) => {
   const [contentPopups, setContentPopups] = useState<IContentPopup[]>([]);
+  const [contentPopupPosition, setContentPopupPosition] = useState({ x: 0, y: 0 });
   const [templatePopupPosition, setTemplatePopupPosition] = useState({ x: 0, y: 0 });
   const [isTemplatePopupOpen, setIsTemplatePopupOpen] = useState(false);
-  const [lastContentHeaderText, setLastContentHeaderTest] = useState('');
+  const [lastSelectedText, setLastSelectedText] = useState('');
+  const [headerText, setHeaderText] = useState('');
+  const [templateText, setTemplateText] = useState('');
+
   const templatePopupRef = useRef(null);
   // const [closeAllPopups, setCloseAllPopups] = useState(false);
   const aiPort = getPort('ai');
@@ -21,8 +25,7 @@ const PopupManager: React.FC<IPopupManager> = ({ contentHeaderText, surroundingT
   const openContentPopup = (position: { x: number; y: number }) => {
     const newPopup: IContentPopup = {
       isOpen: true,
-      // contentHeaderText: contentHeaderText,
-      contentHeaderText: lastContentHeaderText,
+      selectedText: headerText,
       contentText: '',
       position: position,
     };
@@ -81,44 +84,57 @@ const PopupManager: React.FC<IPopupManager> = ({ contentHeaderText, surroundingT
     }
   };
 
-  const setSelectedTemplate = (template: string) => {
-    if (!lastContentHeaderText || !surroundingText) {
+  const setupContentPopup = (template: ITemplate) => {
+    setHeaderText(`${template.name}: ${lastSelectedText}`);
+    setTemplateText(template.content);
+  }
+
+  useEffect(() => {
+    if (!headerText || !templateText || !surroundingText) {
       return;
     }
 
-    const message = `Provide concise, complete and simple explanation of:\n${lastContentHeaderText}\n\nYou might use this:\n"${surroundingText}"`
+    setIsTemplatePopupOpen(false);
+
+    const message = templateText
+      .replace('{selectedText}', headerText)
+      .replace('{surroundingText}', surroundingText);
 
     aiPort.postMessage({ body: message });
 
-    const selection = window.getSelection();
-    if (selection?.rangeCount > 0) {
-      const range = selection.getRangeAt(0);
-      const rect = range.getBoundingClientRect();
+    openContentPopup(contentPopupPosition);
+  }, [headerText, templateText]);
 
-      if (rect.top === 0 && rect.left === 0 && contentPopups.length > 0) {
-        const lastPopup = contentPopups[contentPopups.length - 1];
-        openContentPopup({ x: lastPopup.position.x + 20, y: lastPopup.position.y + 20 });
-      } else {
-        // openContentPopup({ x: rect.left, y: rect.top });
-        openContentPopup(mousePosition);
-      }
+  const handleTemplatePopupOutsideClick = (event) => {
+    if (templatePopupRef?.current && !templatePopupRef?.current?.contains(event.target)) {
+      setIsTemplatePopupOpen(false);
     }
   };
-  
-  useEffect(() => {
-    if (templatePopupRef.current && !templatePopupRef.current.contains(event.target) && !contentHeaderText) {
-      setIsTemplatePopupOpen(false);
-    } else if (contentHeaderText) {
-      setIsTemplatePopupOpen(true);
-    }
 
-    if (contentHeaderText) {
-      setLastContentHeaderTest(contentHeaderText);
+  useEffect(() => {
+    if (selectedText) {
+      const selection = window.getSelection();
+
+      if (selection?.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        const rect = range.getBoundingClientRect();
+
+        if (rect.top === 0 && rect.left === 0) {
+          setContentPopupPosition(mousePosition);
+        } else {
+          setContentPopupPosition({ x: rect.right, y: rect.bottom });
+        }
+
+        setLastSelectedText(selectedText);
+        setTemplatePopupPosition({ x: mousePosition.x + window.scrollX, y: mousePosition.y + window.scrollY });
+        setIsTemplatePopupOpen(true);
+      }
     }
-  }, [contentHeaderText]);
+  }, [selectedText]);
 
   useEffect(() => {
     aiPort.onMessage.addListener(messageListener);
+    document.body.addEventListener('mouseup', handleTemplatePopupOutsideClick)
 
     return () => {
       aiPort.onMessage.removeListener(messageListener);
@@ -137,24 +153,26 @@ const PopupManager: React.FC<IPopupManager> = ({ contentHeaderText, surroundingT
       {isTemplatePopupOpen && (
         <div ref={templatePopupRef}>
           <TemplatePopup
-            onSelectTemplate={(template) => setSelectedTemplate(template)}
-            position={{ x: mousePosition.x, y: mousePosition.y + window.scrollY }}
+            position={templatePopupPosition}
+            onSelectTemplate={(template) => setupContentPopup(template)}
           />
         </div>
       )}
 
-      {contentPopups.map((contentPopup, index) => (
-        contentPopup.isOpen && (
-          <ContentPopup
-            key={index}
-            isOpen={contentPopup.isOpen}
-            onClose={() => closeContentPopup(index)}
-            position={contentPopup.position}
-            contentHeaderText={contentPopup.contentHeaderText}
-            contentText={contentPopup.contentText}
-          />
-        )
-      ))}
+      <div>
+        {contentPopups.map((contentPopup, index) => (
+          contentPopup.isOpen && (
+            <ContentPopup
+              key={index}
+              isOpen={contentPopup.isOpen}
+              onClose={() => closeContentPopup(index)}
+              position={contentPopup.position}
+              selectedText={contentPopup.selectedText}
+              contentText={contentPopup.contentText}
+            />
+          )
+        ))}
+      </div>
     </div>
   );
 };

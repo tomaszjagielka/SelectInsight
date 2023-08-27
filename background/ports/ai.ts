@@ -92,6 +92,8 @@ const handler: PlasmoMessaging.PortHandler = async (req, res) => {
   const question = req.body;
 
   getResponse(question).then(async answer => {
+    // res.send({ "data": "data" });
+
     // @ts-ignore
     const resRead = answer.getReader()
 
