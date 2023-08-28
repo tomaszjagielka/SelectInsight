@@ -89,9 +89,10 @@ const getResponse = async (question) => {
 }
 
 const handler: PlasmoMessaging.PortHandler = async (req, res) => {
-  const question = req.body;
+  const message = req.body.message;
+  const popupIndex = req.body.popupIndex;
 
-  getResponse(question).then(async answer => {
+  getResponse(message).then(async answer => {
     // res.send({ "data": "data" });
 
     // @ts-ignore
@@ -108,10 +109,11 @@ const handler: PlasmoMessaging.PortHandler = async (req, res) => {
         res.send({ body: 'ERROR' })
       }
 
-      const data = new TextDecoder().decode(value);
-      res.send({ data });
+      const reponse = new TextDecoder().decode(value);
+      const data = { data: { response: reponse, popupIndex: popupIndex } }
+      res.send(data);
     }
-  }).catch((e) => res.send({ e }))
+  }).catch((e) => res.send({ response: e, popupIndex: popupIndex }))
 }
 
 export default handler

@@ -22,13 +22,15 @@ const PopupManager: React.FC<IPopupManager> = ({ selectedText, surroundingText, 
   // const [closeAllPopups, setCloseAllPopups] = useState(false);
   const aiPort = getPort('ai');
 
-  const openContentPopup = (position: { x: number; y: number }) => {
+  const openContentPopup = (popupIndex: number, position: { x: number; y: number }, aiMessage: string) => {
     const newPopup: IContentPopup = {
       isOpen: true,
       selectedText: headerText,
       contentText: '',
       position: position,
       topmostZIndex: topmostContentPopupZIndex,
+      aiMessage: aiMessage,
+      index: popupIndex,
     };
     setContentPopups(prevPopups => [...prevPopups, newPopup]);
   };
@@ -41,12 +43,12 @@ const PopupManager: React.FC<IPopupManager> = ({ selectedText, surroundingText, 
     });
   };
 
-  const updateLastPopupContent = (contentText: string) => {
+  const updatePopupContent = (popupIndex: number, contentText: string) => {
     setContentPopups(prevPopups => {
       const updatedPopups = [...prevPopups];
       if (updatedPopups.length > 0) {
-        const lastPopupIndex = updatedPopups.length - 1;
-        updatedPopups[lastPopupIndex].contentText = contentText;
+        updatedPopups[popupIndex].index = popupIndex;
+        updatedPopups[popupIndex].contentText = contentText;
       }
       return updatedPopups;
     });
@@ -54,17 +56,19 @@ const PopupManager: React.FC<IPopupManager> = ({ selectedText, surroundingText, 
 
   let isPopupAnswer = false;
   const messageListener = (msg: MessageEvent) => {
+    const popupIndex = msg?.data?.popupIndex ?? 0;
+    
     try {
-      const data = msg.data.split("data:");
+      const response = msg.data.response.split("data:");
 
-      if (data.length < 2) {
-        const json = JSON.parse(data);
+      if (response.length < 2) {
+        const json = JSON.parse(response);
         const detail = json?.detail;
-        updateLastPopupContent(detail);
+        updatePopupContent(popupIndex, detail);
         return;
       }
 
-      const firstDataItem = data[1].trim();
+      const firstDataItem = response[1].trim();
 
       if (firstDataItem === "[DONE]") {
         return;
@@ -74,12 +78,12 @@ const PopupManager: React.FC<IPopupManager> = ({ selectedText, surroundingText, 
       const answer = json?.message?.content?.parts[0];
 
       if (answer) {
-        updateLastPopupContent(answer);
+        updatePopupContent(popupIndex, answer);
         isPopupAnswer = true;
       }
     } catch (error) {
       if (!isPopupAnswer) {
-        updateLastPopupContent(`An error occurred: ${error}`);
+        updatePopupContent(popupIndex, `An error occurred: ${error}`);
         console.error(error);
       }
     }
@@ -105,9 +109,10 @@ const PopupManager: React.FC<IPopupManager> = ({ selectedText, surroundingText, 
       .replace('{selectedText}', lastSelectedText)
       .replace('{surroundingText}', surroundingText);
 
-    aiPort.postMessage({ body: message });
+    const body = { popupIndex: contentPopups.length, message: message };
+    aiPort.postMessage({ body: body });
 
-    openContentPopup(contentPopupPosition);
+    openContentPopup(contentPopups.length, contentPopupPosition, message);
   }, [headerText, templateText]);
 
   useEffect(() => {
@@ -162,11 +167,13 @@ const PopupManager: React.FC<IPopupManager> = ({ selectedText, surroundingText, 
           contentPopup.isOpen && (
             <ContentPopup
               key={index}
+              index={contentPopup.index}
               isOpen={contentPopup.isOpen}
               topmostZIndex={topmostContentPopupZIndex}
               position={contentPopup.position}
               selectedText={contentPopup.selectedText}
               contentText={contentPopup.contentText}
+              aiMessage={contentPopup.aiMessage}
               onClose={() => closeContentPopup(index)}
               setZIndex={(zIndex) => setContentPopupZIndex(zIndex)}
             />
