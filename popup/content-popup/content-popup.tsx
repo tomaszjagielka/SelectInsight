@@ -1,4 +1,5 @@
 import styleText from 'data-text:./content-popup.scss';
+import skeletonLoadingStyleText from 'data-text:~shared/components/skeleton-loading/skeleton-loading.scss';
 import React, { useState, useEffect, useRef } from 'react';
 import Draggable from 'react-draggable';
 import Markdown from 'markdown-to-jsx'
@@ -10,24 +11,28 @@ import { faRefresh } from '@fortawesome/free-solid-svg-icons';
 
 export interface IContentPopup {
   index: number;
+  conversationId: string;
+  parentMessageId: string;
   isOpen: boolean;
   topmostZIndex: number;
   position: { x: number; y: number };
   selectedText: string;
   contentText: string;
-  aiMessage: string;
+  messageToAi: string;
   onClose?: () => void;
   setZIndex?: (zIndex: number) => void;
 }
 
 const ContentPopup: React.FC<IContentPopup> = ({
   index,
+  conversationId,
+  parentMessageId,
   isOpen,
   position: initialPosition,
   topmostZIndex: zIndex,
   selectedText: headerContent,
   contentText: textContent,
-  aiMessage: aiMessage,
+  messageToAi: messageToAi,
   onClose,
   setZIndex
 }) => {
@@ -39,6 +44,7 @@ const ContentPopup: React.FC<IContentPopup> = ({
     zIndex: zIndex,
   });
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [inputMessage, setInputMessage] = useState('');
   const contentPopupRef = useRef(null);
   const aiPort = getPort('ai');
 
@@ -53,8 +59,24 @@ const ContentPopup: React.FC<IContentPopup> = ({
 
   const refresh = () => {
     setIsRefreshing(true);
-    const body = { popupIndex: index, message: aiMessage };
+    const body = {
+      popupIndex: index,
+      message: messageToAi,
+      conversationId: conversationId,
+      parentMessageId: parentMessageId
+    };
     aiPort.postMessage({ body: body });
+  };
+
+  const sendMessageToAi = (message) => {
+    const body = {
+      popupIndex: index,
+      message: message,
+      conversationId: conversationId,
+      parentMessageId: parentMessageId
+    };
+    aiPort.postMessage({ body: body });
+    setInputMessage(''); // Clear the input field
   };
 
   useEffect(() => {
@@ -75,7 +97,10 @@ const ContentPopup: React.FC<IContentPopup> = ({
 
   return (
     <div>
-      <style>{styleText}</style>
+      <style>
+        {styleText}
+        {skeletonLoadingStyleText}
+      </style>
 
       <div onMouseDown={handlePopupClick}>
         <Draggable handle='h3' position={{ x: position.x, y: position.y }} onDrag={updatePopupPosition}>
@@ -86,7 +111,6 @@ const ContentPopup: React.FC<IContentPopup> = ({
                 <div className='btn-container'>
                   <div className='refresh-btn-container'
                     onClick={refresh}>
-
                     <FontAwesomeIcon
                       className='btn'
                       icon={faRefresh}
@@ -94,7 +118,6 @@ const ContentPopup: React.FC<IContentPopup> = ({
                   </div>
                   <div className='pin-btn-container'
                     onClick={() => setPin(!pin)}>
-
                     <FontAwesomeIcon
                       className={`btn ${pin ? 'pinned' : ''}`}
                       icon={faThumbTack}
@@ -102,7 +125,6 @@ const ContentPopup: React.FC<IContentPopup> = ({
                   </div>
                   <div className='close-btn-container'
                     onClick={onClose}>
-
                     <FontAwesomeIcon
                       className='btn'
                       icon={faTimes}
@@ -110,20 +132,33 @@ const ContentPopup: React.FC<IContentPopup> = ({
                   </div>
                 </div>
               </div>
-
-              <div className='content-container'>
-                {isRefreshing ? (
-                  <div className='skeleton-loading'></div>
-                ) : (
-                  textContent ? (
-                    <div className='content'>
-                      <Markdown>{textContent}</Markdown>
+              {!textContent || isRefreshing ? (
+                <div className='skeleton-loading'></div>
+              ) : (
+                <div>
+                  <div>
+                    <div className='content-container'>
+                      <div className='content'>
+                        <Markdown>{textContent}</Markdown>
+                      </div>
                     </div>
-                  ) : (
-                    <div className='skeleton-loading'></div>
-                  )
-                )}
-              </div>
+                  </div>
+                  <div className='message-input-container'>
+                    <input
+                      className='message-input'
+                      type="text"
+                      value={inputMessage}
+                      onChange={(e) => setInputMessage(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          // Send the input message to AI
+                          sendMessageToAi(inputMessage);
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </Draggable>

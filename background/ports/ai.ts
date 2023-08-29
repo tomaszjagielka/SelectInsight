@@ -16,7 +16,7 @@ const uid = () => {
     }
     return result;
   }
-  const generateconstant = () => {
+  const generateConstant = () => {
     const value = generateNumber(16);
     const constant = (value & 0x3) | 0x8;
     return constant.toString(16);
@@ -26,10 +26,11 @@ const uid = () => {
     const result = generateXes(8)
       + '-' + generateXes(4)
       + '-' + '4' + generateXes(3)
-      + '-' + generateconstant() + generateXes(3)
+      + '-' + generateConstant() + generateXes(3)
       + '-' + generateXes(12)
     return result;
   };
+
   return generate()
 };
 
@@ -51,7 +52,7 @@ const getToken = async () => {
   })
 }
 
-const getResponse = async (question) => {
+const getResponse = async (message: string, conversationId: string, parentMessageId: string) => {
   return new Promise(async (resolve, reject) => {
     try {
       const accessToken = await getToken();
@@ -63,18 +64,19 @@ const getResponse = async (question) => {
         },
         body: JSON.stringify({
           action: "next",
+          conversation_id: conversationId,
           messages: [
             {
               id: uid(),
               role: "user",
               content: {
                 content_type: "text",
-                parts: [question]
+                parts: [message]
               }
             }
           ],
           model: "text-davinci-002-render",
-          parent_message_id: uid()
+          parent_message_id: parentMessageId ?? uid()
         })
       })
       resolve(res.body)
@@ -91,16 +93,18 @@ const getResponse = async (question) => {
 const handler: PlasmoMessaging.PortHandler = async (req, res) => {
   const message = req.body.message;
   const popupIndex = req.body.popupIndex;
+  const conversationId = req.body.conversationId;
+  const parentMessageId = req.body.parentMessageId;
 
-  getResponse(message).then(async answer => {
+  getResponse(message, conversationId, parentMessageId).then(async answer => {
     // res.send({ "data": "data" });
 
     // @ts-ignore
-    const resRead = answer.getReader()
-
+    const resReader = answer.getReader()
+    
     while (true) {
-      const { done, value } = await resRead.read()
-
+      const { done, value } = await resReader.read()
+      
       if (done) {
         break
       }

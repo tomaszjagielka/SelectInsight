@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import ContentPopup, { type IContentPopup } from '~components/popup/content-popup/content-popup';
+import ContentPopup, { type IContentPopup } from '~/popup/content-popup/content-popup';
 import { getPort } from "@plasmohq/messaging/port";
 import TemplatePopup, { type ITemplate } from '../template-popup/template-popup';
 
@@ -22,15 +22,17 @@ const PopupManager: React.FC<IPopupManager> = ({ selectedText, surroundingText, 
   // const [closeAllPopups, setCloseAllPopups] = useState(false);
   const aiPort = getPort('ai');
 
-  const openContentPopup = (popupIndex: number, position: { x: number; y: number }, aiMessage: string) => {
+  const openContentPopup = (popupIndex: number, position: { x: number; y: number }, messageToAi: string) => {
     const newPopup: IContentPopup = {
+      index: popupIndex,
+      conversationId: null,
+      parentMessageId: null,
       isOpen: true,
       selectedText: headerText,
-      contentText: '',
+      contentText: null,
       position: position,
       topmostZIndex: topmostContentPopupZIndex,
-      aiMessage: aiMessage,
-      index: popupIndex,
+      messageToAi: messageToAi,
     };
     setContentPopups(prevPopups => [...prevPopups, newPopup]);
   };
@@ -43,11 +45,13 @@ const PopupManager: React.FC<IPopupManager> = ({ selectedText, surroundingText, 
     });
   };
 
-  const updatePopupContent = (popupIndex: number, contentText: string) => {
+  const updatePopupContent = (popupIndex: number, contentText: string, conversationId: string = null, parentMessageId: string = null) => {
     setContentPopups(prevPopups => {
       const updatedPopups = [...prevPopups];
       if (updatedPopups.length > 0) {
         updatedPopups[popupIndex].index = popupIndex;
+        updatedPopups[popupIndex].conversationId = conversationId;
+        updatedPopups[popupIndex].parentMessageId = parentMessageId;
         updatedPopups[popupIndex].contentText = contentText;
       }
       return updatedPopups;
@@ -57,7 +61,7 @@ const PopupManager: React.FC<IPopupManager> = ({ selectedText, surroundingText, 
   let isPopupAnswer = false;
   const messageListener = (msg: MessageEvent) => {
     const popupIndex = msg?.data?.popupIndex ?? 0;
-    
+
     try {
       const response = msg.data.response.split("data:");
 
@@ -75,10 +79,12 @@ const PopupManager: React.FC<IPopupManager> = ({ selectedText, surroundingText, 
       }
 
       const json = JSON.parse(firstDataItem);
-      const answer = json?.message?.content?.parts[0];
+      const content = json?.message?.content?.parts[0];
+      const conversationId = json?.conversation_id;
+      const parentMessageId = json?.message?.id;
 
-      if (answer) {
-        updatePopupContent(popupIndex, answer);
+      if (content) {
+        updatePopupContent(popupIndex, content, conversationId, parentMessageId);
         isPopupAnswer = true;
       }
     } catch (error) {
@@ -168,12 +174,14 @@ const PopupManager: React.FC<IPopupManager> = ({ selectedText, surroundingText, 
             <ContentPopup
               key={index}
               index={contentPopup.index}
+              conversationId={contentPopup.conversationId}
+              parentMessageId={contentPopup.parentMessageId}
               isOpen={contentPopup.isOpen}
               topmostZIndex={topmostContentPopupZIndex}
               position={contentPopup.position}
               selectedText={contentPopup.selectedText}
               contentText={contentPopup.contentText}
-              aiMessage={contentPopup.aiMessage}
+              messageToAi={contentPopup.messageToAi}
               onClose={() => closeContentPopup(index)}
               setZIndex={(zIndex) => setContentPopupZIndex(zIndex)}
             />

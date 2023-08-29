@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import PopupManager from '~components/popup/popup-manager/popup-manager';
+import PopupManager from '~popup/popup-manager/popup-manager';
 
 const Content: React.FC = () => {
   const [selectedText, setSelectedText] = useState('');
