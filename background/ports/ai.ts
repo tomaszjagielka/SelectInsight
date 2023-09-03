@@ -95,10 +95,11 @@ const handler: PlasmoMessaging.PortHandler = async (req, res) => {
   const popupIndex = req.body.popupIndex;
   const conversationId = req.body.conversationId;
   const parentMessageId = req.body.parentMessageId;
+  const contentPopupMessages = req.body.messages;
+  const contentPopupLastMessageIndex = req.body.lastMessageIndex;
+  // res.send({ "data": "data" });
 
   getResponse(message, conversationId, parentMessageId).then(async answer => {
-    // res.send({ "data": "data" });
-
     // @ts-ignore
     const resReader = answer.getReader()
     
@@ -114,7 +115,7 @@ const handler: PlasmoMessaging.PortHandler = async (req, res) => {
       }
 
       const reponse = new TextDecoder().decode(value);
-      const data = { data: { response: reponse, popupIndex: popupIndex } }
+      const data = { data: { response: reponse, popupIndex: popupIndex, contentPopupMessages: contentPopupMessages, contentPopupLastMessageIndex: contentPopupLastMessageIndex } }
       res.send(data);
     }
   }).catch((e) => res.send({ response: e, popupIndex: popupIndex }))

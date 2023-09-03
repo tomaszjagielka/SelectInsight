@@ -23,11 +23,15 @@ const TemplatePopup: React.FC<ITemplatePopup> = ({ position, onSelectTemplate })
   const templateOptions: ITemplate[] = [
     {
       name: 'Explain',
-      content: `Provide concise, complete and simple explanation of:\n{selectedText}\n\nYou might use this:\n{surroundingText}`
+      content: `Provide concise, complete and simple explanation of:\n{selectedText}`
+    },
+    {
+      name: 'Explain in context',
+      content: `Provide concise, complete and simple explanation of:\n{selectedText}\n\nYou might use this context:\n{surroundingText}`
     },
     {
       name: 'Translate to Polish',
-      content: 'Przetłumacz "{selectedText}" na polski. Możesz użyć tego:\n{surroundingText}',
+      content: 'Przetłumacz "{selectedText}" na polski. Możesz użyć tego kontekstu:\n{surroundingText}',
     },
   ];
 
@@ -63,7 +67,7 @@ const TemplatePopup: React.FC<ITemplatePopup> = ({ position, onSelectTemplate })
       let template: ITemplate = null;
 
       if (selectedIndex === filteredTemplates.length) {
-        const templateText = `${searchQuery}:\n{selectedText}`;
+        const templateText = `${searchQuery}:\n{selectedText}\n\nYou might use this context:\n{surroundingText}`;
         template = { name: searchQuery, content: templateText };
       } else if (selectedIndex !== -1) {
         const templateName = filteredTemplates[selectedIndex].name;
@@ -81,11 +85,11 @@ const TemplatePopup: React.FC<ITemplatePopup> = ({ position, onSelectTemplate })
     <div>
       <style>{styleText}</style>
 
-      <div className="template-popup" style={popupStyle}>
+      <div className='template-popup' style={popupStyle}>
         <input
-          type="text"
+          type='text'
           className='search-input'
-          placeholder="Write a prompt"
+          placeholder='Write a prompt'
           value={searchQuery}
           onChange={handleSearchInputChange}
           onKeyDown={handleKeyDown}

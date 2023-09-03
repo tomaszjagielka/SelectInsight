@@ -1,13 +1,14 @@
 import styleText from 'data-text:./content-popup.scss';
 import skeletonLoadingStyleText from 'data-text:~shared/components/skeleton-loading/skeleton-loading.scss';
 import React, { useState, useEffect, useRef } from 'react';
-import Draggable from 'react-draggable';
 import Markdown from 'markdown-to-jsx'
+import CopyToClipboard from 'react-copy-to-clipboard';
 import { getPort } from '@plasmohq/messaging/port';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faTimes } from '@fortawesome/free-solid-svg-icons';
 import { faThumbTack } from '@fortawesome/free-solid-svg-icons';
-import { faRefresh } from '@fortawesome/free-solid-svg-icons';
+import { faCopy } from '@fortawesome/free-regular-svg-icons';
+import { Rnd } from 'react-rnd'; // Import the react-rnd library
 
 export interface IContentPopup {
   index: number;
@@ -17,8 +18,8 @@ export interface IContentPopup {
   topmostZIndex: number;
   position: { x: number; y: number };
   selectedText: string;
-  contentText: string;
-  messageToAi: string;
+  messages: string[];
+  lastMessageIndex: number;
   onClose?: () => void;
   setZIndex?: (zIndex: number) => void;
 }
@@ -31,20 +32,23 @@ const ContentPopup: React.FC<IContentPopup> = ({
   position: initialPosition,
   topmostZIndex: zIndex,
   selectedText: headerContent,
-  contentText: textContent,
-  messageToAi: messageToAi,
+  messages,
+  lastMessageIndex,
   onClose,
-  setZIndex
+  setZIndex,
 }) => {
-
-  const [pin, setPin] = useState(false);
+  const [isPopupPinned, setPin] = useState(false);
   const [position, setPopupPosition] = useState(initialPosition);
   const [popupStyle, setPopupStyle] = useState<React.CSSProperties>({
-    position: 'absolute',
     zIndex: zIndex,
   });
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [inputMessage, setInputMessage] = useState('');
+  const [contentContainerStyle, setContentContainerStyle] = useState<React.CSSProperties>({
+    maxWidth: '400px',
+    maxHeight: `${450 - 86}px`,
+  });
+  const [contentPopupSize, setContentPopupSize] = useState({ width: 200, height: 200 })
   const contentPopupRef = useRef(null);
   const aiPort = getPort('ai');
 
@@ -53,47 +57,39 @@ const ContentPopup: React.FC<IContentPopup> = ({
   };
 
   const handlePopupClick = () => {
-    setPopupStyle({ ...popupStyle, zIndex: zIndex++ });
-    setZIndex(zIndex);
-  }
-
-  const refresh = () => {
-    setIsRefreshing(true);
-    const body = {
-      popupIndex: index,
-      message: messageToAi,
-      conversationId: conversationId,
-      parentMessageId: parentMessageId
-    };
-    aiPort.postMessage({ body: body });
+    setPopupStyle({ ...popupStyle, zIndex: zIndex + 1 });
+    setZIndex(zIndex + 1);
   };
 
   const sendMessageToAi = (message) => {
+    setInputMessage('');
+    messages.push(message);
     const body = {
       popupIndex: index,
       message: message,
       conversationId: conversationId,
-      parentMessageId: parentMessageId
+      parentMessageId: parentMessageId,
+      messages: messages,
+      lastMessageIndex: lastMessageIndex + 2,
     };
     aiPort.postMessage({ body: body });
-    setInputMessage(''); // Clear the input field
   };
 
   useEffect(() => {
-    if (pin) {
+    if (isPopupPinned) {
       setPopupPosition({ x: position.x - window.scrollX, y: position.y - window.scrollY });
       setPopupStyle({ ...popupStyle, position: 'fixed' });
     } else {
       setPopupPosition({ x: position.x + window.scrollX, y: position.y + window.scrollY });
       setPopupStyle({ ...popupStyle, position: 'absolute' });
     }
-  }, [pin, isOpen]);
+  }, [isPopupPinned, isOpen]);
 
   useEffect(() => {
-    if (textContent) {
+    if (messages) {
       setIsRefreshing(false);
     }
-  }, [textContent]);
+  }, [messages[messages.length - 1]]);
 
   return (
     <div>
@@ -103,55 +99,87 @@ const ContentPopup: React.FC<IContentPopup> = ({
       </style>
 
       <div onMouseDown={handlePopupClick}>
-        <Draggable handle='h3' position={{ x: position.x, y: position.y }} onDrag={updatePopupPosition}>
+        <Rnd
+          default={{
+            x: undefined,
+            y: undefined,
+            width: 400,
+            height: undefined,
+          }}
+          enableResizing={{
+            top: true,
+            right: true,
+            bottom: true,
+            left: true,
+            topRight: true,
+            bottomRight: true,
+            bottomLeft: true,
+            topLeft: true,
+          }}
+          dragHandleClassName={'header'}
+          position={position}
+          onResize={(e, direction, ref, delta, position) => {
+            setContentContainerStyle({
+              height: `${ref.offsetHeight - 86}px`,
+            })
+            setPopupPosition(position)
+          }}
+          onDragStop={(e, d) => { setPopupPosition(d) }}
+          style={popupStyle}
+          ref={contentPopupRef}
+        >
           {isOpen && (
-            <div className='content-popup' style={popupStyle} ref={contentPopupRef}>
+            <div className='content-popup'>
               <div className='header-container'>
                 <h3 className='header'>{headerContent}</h3>
                 <div className='btn-container'>
-                  <div className='refresh-btn-container'
-                    onClick={refresh}>
+                  <div className='pin-btn-container' onClick={() => setPin(!isPopupPinned)}>
                     <FontAwesomeIcon
-                      className='btn'
-                      icon={faRefresh}
-                    />
-                  </div>
-                  <div className='pin-btn-container'
-                    onClick={() => setPin(!pin)}>
-                    <FontAwesomeIcon
-                      className={`btn ${pin ? 'pinned' : ''}`}
+                      className={`btn ${isPopupPinned ? 'pinned' : ''}`}
                       icon={faThumbTack}
                     />
                   </div>
-                  <div className='close-btn-container'
-                    onClick={onClose}>
-                    <FontAwesomeIcon
-                      className='btn'
-                      icon={faTimes}
-                    />
+                  <div className='close-btn-container' onClick={onClose}>
+                    <FontAwesomeIcon className='btn' icon={faTimes} />
                   </div>
                 </div>
               </div>
-              {!textContent || isRefreshing ? (
+              {!messages || isRefreshing ? (
                 <div className='skeleton-loading'></div>
               ) : (
                 <div>
                   <div>
-                    <div className='content-container'>
+                    <div className='content-container' style={contentContainerStyle}>
                       <div className='content'>
-                        <Markdown>{textContent}</Markdown>
+                        {messages.map((message, index) => (
+                          <div
+                            key={index}
+                            className={`chat-message ${index % 2 !== 0 ? 'user' : 'ai'
+                              }-message-container`}
+                          >
+                            <div className='content' key={'content' + index}>
+                              <Markdown>{message}</Markdown>
+                            </div>
+                            <CopyToClipboard text={message}>
+                              <FontAwesomeIcon
+                                className={`${index % 2 !== 0 ? 'user-message' : 'ai-message'} copy-btn`}
+                                icon={faCopy}
+                              />
+                            </CopyToClipboard>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   </div>
                   <div className='message-input-container'>
                     <input
+                      type='text'
                       className='message-input'
-                      type="text"
+                      placeholder='Send a message'
                       value={inputMessage}
                       onChange={(e) => setInputMessage(e.target.value)}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') {
-                          // Send the input message to AI
                           sendMessageToAi(inputMessage);
                         }
                       }}
@@ -161,7 +189,7 @@ const ContentPopup: React.FC<IContentPopup> = ({
               )}
             </div>
           )}
-        </Draggable>
+        </Rnd>
       </div>
     </div>
   );
