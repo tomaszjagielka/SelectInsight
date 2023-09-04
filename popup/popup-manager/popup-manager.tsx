@@ -78,6 +78,18 @@ const PopupManager: React.FC<IPopupManager> = ({ selectedText, surroundingText, 
 
     try {
       const response = msg.data.response.split("data:");
+
+      // Does it work?
+      if (response.length < 2) {
+        const json = JSON.parse(response);
+        const detail = json?.detail;
+        const contentPopupMessages = json?.contentPopupMessages;
+
+        updatePopupContent(popupIndex, detail, contentPopupMessages, contentPopupLastMessageIndex);
+
+        return;
+      }
+
       const firstDataItem = response[1].trim();
 
       if (firstDataItem === "[DONE]") {
@@ -89,14 +101,6 @@ const PopupManager: React.FC<IPopupManager> = ({ selectedText, surroundingText, 
       const conversationId = json?.conversation_id;
       const parentMessageId = json?.message?.id;
       const contentPopupMessages = json?.contentPopupMessages;
-
-      // TODO: Implement.
-      // if (response.length < 2) {
-      //   const json = JSON.parse(response);
-      //   const detail = json?.detail;
-      //   updatePopupContent(popupIndex, detail, contentPopupMessages, contentPopupLastMessageIndex, conversationId, parentMessageId);
-      //   return;
-      // }
 
       if (content) {
         updatePopupContent(popupIndex, content, contentPopupMessages, contentPopupLastMessageIndex, conversationId, parentMessageId);
