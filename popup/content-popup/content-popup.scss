@@ -36,14 +36,17 @@
       .pin-btn-container,
       .refresh-btn-container {
         padding: 10px;
+        width: 20px;
+        height: 20px;
 
         &:hover {
           background-color: #f0f0f0;
         }
+      }
 
-        .btn {
-          width: 20px;
-          height: 20px;
+      .pin-btn-container {
+        .btn.pinned {
+          transform: rotate(45deg);
         }
       }
     }
@@ -74,19 +77,17 @@
           box-shadow: 0px 0px 2px rgba(0, 0, 0, 0.2);
           background-color: #f0f0f0;
 
-          div > *:last-child {
+          div>*:last-child {
             margin-bottom: 0;
           }
-  
-          div > *:first-child {
+
+          div>*:first-child {
             margin-top: 0;
           }
         }
 
         .copy-btn {
-          padding: 8px;
-          width: 20px;
-          height: 20px;
+          padding: 10px;
           visibility: hidden;
           cursor: pointer;
           position: sticky;
@@ -111,19 +112,17 @@
           flex: 1;
           box-shadow: 0px 0px 2px rgba(0, 0, 0, 0.2);
 
-          div > *:last-child {
+          div>*:last-child {
             margin-bottom: 0;
           }
-  
-          div > *:first-child {
+
+          div>*:first-child {
             margin-top: 0;
           }
         }
 
         .copy-btn {
-          padding: 8px;
-          width: 20px;
-          height: 20px;
+          padding: 10px;
           visibility: hidden;
           cursor: pointer;
           position: sticky;
@@ -142,6 +141,9 @@
   }
 
   .message-input-container {
+    display: flex;
+    align-items: center;
+
     .message-input {
       width: 100%;
       box-sizing: border-box;
@@ -151,17 +153,48 @@
       background-color: #f7f7f8;
       padding: 10px;
       border: 0;
+      flex: 1;
+    }
+
+    .btn-container.send,
+    .btn-container.loading {
+      padding: 10px;
+      width: 20px;
+      height: 20px;
+      background-color: #f7f7f8;
+    }
+
+    .btn-container.send {
+      cursor: pointer;
+    }
+
+    .btn-container.loading {
+      .btn {
+        animation: slide 2s infinite;
+      }
+
+      @keyframes slide {
+        0% {
+          clip-path: polygon(0% 0%, 0% 100%, 0% 100%, 0% 0%);
+        }
+
+        50% {
+          clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%);
+        }
+
+        100% {
+          clip-path: polygon(100% 0%, 100% 0%, 100% 100%, 100% 100%);
+        }
+      }
+    }
+
+    .btn-container.send:hover {
+      background-color: #f0f0f0;
     }
   }
 
-  .btn.pinned {
-    transform: rotate(45deg);
-  }
-
-  .spinner-container {
-    margin: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+  .btn {
+    width: 20px;
+    height: 20px;
   }
 }

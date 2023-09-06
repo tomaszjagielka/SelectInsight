@@ -4,9 +4,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import Markdown from 'markdown-to-jsx'
 import CopyToClipboard from 'react-copy-to-clipboard';
 import { getPort } from '@plasmohq/messaging/port';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faTimes } from '@fortawesome/free-solid-svg-icons';
-import { faThumbTack } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon, } from '@fortawesome/react-fontawesome';
+import { faTimes, faThumbTack, faPaperPlane, faEllipsis } from '@fortawesome/free-solid-svg-icons';
 import { faCopy } from '@fortawesome/free-regular-svg-icons';
 import { Rnd } from 'react-rnd'; // Import the react-rnd library
 
@@ -20,8 +19,10 @@ export interface IContentPopup {
   selectedText: string;
   messages: string[];
   lastMessageIndex: number;
+  isFinished: boolean;
   onClose?: () => void;
   setZIndex?: (zIndex: number) => void;
+  setIsFinished?: (isFinished: boolean) => void;
 }
 
 const ContentPopup: React.FC<IContentPopup> = ({
@@ -34,27 +35,29 @@ const ContentPopup: React.FC<IContentPopup> = ({
   selectedText: headerContent,
   messages,
   lastMessageIndex,
+  isFinished,
   onClose,
   setZIndex,
+  setIsFinished,
 }) => {
   const [isPopupPinned, setPin] = useState(false);
   const [position, setPopupPosition] = useState(initialPosition);
   const [popupStyle, setPopupStyle] = useState<React.CSSProperties>({
     zIndex: zIndex,
   });
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [inputMessage, setInputMessage] = useState('');
   const [contentContainerStyle, setContentContainerStyle] = useState<React.CSSProperties>({
     maxWidth: '400px',
     maxHeight: `${450 - 86}px`,
   });
-  const [contentPopupSize, setContentPopupSize] = useState({ width: 200, height: 200 })
+  // const [isRefreshing, setIsRefreshing] = useState(false);
+  const [contentPopupSize, setContentPopupSize] = useState({ width: 400, height: undefined })
   const contentPopupRef = useRef(null);
   const aiPort = getPort('ai');
 
-  const updatePopupPosition = (event, ui) => {
-    setPopupPosition({ x: ui.x, y: ui.y });
-  };
+  // const updatePopupPosition = (event, ui) => {
+  //   setPopupPosition({ x: ui.x, y: ui.y });
+  // };
 
   const handlePopupClick = () => {
     setPopupStyle({ ...popupStyle, zIndex: zIndex + 1 });
@@ -62,17 +65,21 @@ const ContentPopup: React.FC<IContentPopup> = ({
   };
 
   const sendMessageToAi = (message) => {
-    setInputMessage('');
-    messages.push(message);
-    const body = {
-      popupIndex: index,
-      message: message,
-      conversationId: conversationId,
-      parentMessageId: parentMessageId,
-      messages: messages,
-      lastMessageIndex: lastMessageIndex + 2,
-    };
-    aiPort.postMessage({ body: body });
+    if (message) {
+      setInputMessage('');
+      setIsFinished(false);
+
+      messages.push(message);
+      const body = {
+        popupIndex: index,
+        message: message,
+        conversationId: conversationId,
+        parentMessageId: parentMessageId,
+        messages: messages,
+        lastMessageIndex: lastMessageIndex + 2,
+      };
+      aiPort.postMessage({ body: body });
+    }
   };
 
   useEffect(() => {
@@ -85,11 +92,12 @@ const ContentPopup: React.FC<IContentPopup> = ({
     }
   }, [isPopupPinned, isOpen]);
 
-  useEffect(() => {
-    if (messages) {
-      setIsRefreshing(false);
-    }
-  }, [messages[messages.length - 1]]);
+  // useEffect(() => {
+  //   if (messages) {
+  //     setIsRefreshing(false);
+  //     console.log("Sds")
+  //   }
+  // }, [messages[messages.length - 1]]);
 
   return (
     <div>
@@ -100,12 +108,7 @@ const ContentPopup: React.FC<IContentPopup> = ({
 
       <div onMouseDown={handlePopupClick}>
         <Rnd
-          default={{
-            x: undefined,
-            y: undefined,
-            width: 400,
-            height: undefined,
-          }}
+          size={contentPopupSize}
           enableResizing={{
             top: true,
             right: true,
@@ -121,8 +124,9 @@ const ContentPopup: React.FC<IContentPopup> = ({
           onResize={(e, direction, ref, delta, position) => {
             setContentContainerStyle({
               height: `${ref.offsetHeight - 86}px`,
-            })
-            setPopupPosition(position)
+            });
+            setPopupPosition(position);
+            setContentPopupSize({ width: ref.offsetWidth, height: ref.offsetHeight });
           }}
           onDragStop={(e, d) => { setPopupPosition(d) }}
           style={popupStyle}
@@ -144,7 +148,7 @@ const ContentPopup: React.FC<IContentPopup> = ({
                   </div>
                 </div>
               </div>
-              {!messages || isRefreshing ? (
+              {!messages/* || isRefreshing*/ ? (
                 <div className='skeleton-loading'></div>
               ) : (
                 <div>
@@ -162,7 +166,7 @@ const ContentPopup: React.FC<IContentPopup> = ({
                             </div>
                             <CopyToClipboard text={message}>
                               <FontAwesomeIcon
-                                className={`${index % 2 !== 0 ? 'user-message' : 'ai-message'} copy-btn`}
+                                className={`${index % 2 !== 0 ? 'user-message' : 'ai-message'} btn copy-btn`}
                                 icon={faCopy}
                               />
                             </CopyToClipboard>
@@ -184,6 +188,17 @@ const ContentPopup: React.FC<IContentPopup> = ({
                         }
                       }}
                     />
+                    <div className='btn-container'>
+                      {isFinished ? (
+                        <div className='btn-container send' onClick={() => sendMessageToAi(inputMessage)}>
+                          <FontAwesomeIcon className='btn' icon={faPaperPlane} />
+                        </div>
+                      ) : (
+                        <div className='btn-container loading'>
+                          <FontAwesomeIcon className='btn' icon={faEllipsis} />
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
