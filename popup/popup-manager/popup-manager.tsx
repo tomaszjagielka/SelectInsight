@@ -18,22 +18,24 @@ const PopupManager: React.FC<IPopupManager> = ({ selectedText, surroundingText, 
   const [lastSelectedText, setLastSelectedText] = useState('');
   const [headerText, setHeaderText] = useState('');
   const [templateText, setTemplateText] = useState('');
+  const [isIconClicked, setIsIconClicked] = useState(false);
 
-  // const [closeAllPopups, setCloseAllPopups] = useState(false);
   const aiPort = getPort('ai');
+  const iconPort = getPort('icon');
 
-  const openContentPopup = (popupIndex: number, position: { x: number; y: number }) => {
+  const openContentPopup = (popupIndex: number, position: { x: number; y: number }, isUserMessageFirst: boolean = false) => {
     const newPopup: IContentPopup = {
       index: popupIndex,
       conversationId: null,
       parentMessageId: null,
       isOpen: true,
-      selectedText: headerText,
+      headerText: headerText,
       position: position,
       topmostZIndex: topmostContentPopupZIndex,
       messages: [],
       lastMessageIndex: 0,
       isFinished: false,
+      isUserMessageFirst: isUserMessageFirst,
     };
     setContentPopups(prevPopups => [...prevPopups, newPopup]);
   };
@@ -79,11 +81,6 @@ const PopupManager: React.FC<IPopupManager> = ({ selectedText, surroundingText, 
   function tryParseJSONObject(jsonString) {
     try {
       var o = JSON.parse(jsonString);
-
-      // Handle non-exception-throwing cases:
-      // Neither JSON.parse(false) or JSON.parse(1234) throw errors, hence the type-checking,
-      // but... JSON.parse(null) returns null, and typeof null === "object", 
-      // so we must check for that, too. Thankfully, null is falsey, so this suffices:
       if (o && typeof o === "object") {
         return o;
       }
@@ -94,7 +91,7 @@ const PopupManager: React.FC<IPopupManager> = ({ selectedText, surroundingText, 
   };
 
   let isPopupAnswer = false;
-  const messageListener = (msg: MessageEvent) => {
+  const aiMessageListener = (msg: MessageEvent) => {
     const popupIndex = msg?.data?.popupIndex ?? 0;
     const contentPopupLastMessageIndex = msg?.data?.contentPopupLastMessageIndex;
 
@@ -122,7 +119,7 @@ const PopupManager: React.FC<IPopupManager> = ({ selectedText, surroundingText, 
         const content = json?.message?.content?.parts[0];
         const conversationId = json?.conversation_id;
         const parentMessageId = json?.message?.id;
-        
+
         if (content && content.length > lastContentLength) {
           const isFinished = messageStatus === 'finished_successfully';
           updatePopupContent(popupIndex, contentPopupLastMessageIndex, content, isFinished, conversationId, parentMessageId);
@@ -135,6 +132,10 @@ const PopupManager: React.FC<IPopupManager> = ({ selectedText, surroundingText, 
       // updatePopupContent(popupIndex, `Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer varius condimentum augue, et congue tellus sodales quis. Duis rhoncus arcu dictum consectetur efficitur. Nam tortor elit, cursus eu lacinia nec, pulvinar vel turpis. Cras in fringilla massa, non fermentum turpis. Etiam a velit eget neque feugiat pellentesque. Quisque euismod, justo et sodales pretium, eros sapien rutrum ipsum, et aliquet risus quam nec sapien. Nullam in nulla nec massa tincidunt bibendum at a est. Quisque in congue turpis. Interdum et malesuada fames ac ante ipsum primis in faucibus. Suspendisse bibendum faucibus felis eu accumsan. Donec accumsan libero porta euismod efficitur. Curabitur nec nisl suscipit urna suscipit aliquam nec et nibh. In malesuada nec eros condimentum maximus. Sed hendrerit et massa non facilisis. Duis commodo mauris risus, at rutrum nisi consequat vel. Donec cursus, sem sed volutpat pharetra, arcu metus volutpat lectus, quis laoreet eros massa in leo.`, [`Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer varius condimentum augue, et congue tellus sodales quis. Duis rhoncus arcu dictum consectetur efficitur. Nam tortor elit, cursus eu lacinia nec, pulvinar vel turpis. Cras in fringilla massa, non fermentum turpis. Etiam a velit eget neque feugiat pellentesque. Quisque euismod, justo et sodales pretium, eros sapien rutrum ipsum, et aliquet risus quam nec sapien. Nullam in nulla nec massa tincidunt bibendum at a est. Quisque in congue turpis. Interdum et malesuada fames ac ante ipsum primis in faucibus. Suspendisse bibendum faucibus felis eu accumsan. Donec accumsan libero porta euismod efficitur. Curabitur nec nisl suscipit urna suscipit aliquam nec et nibh. In malesuada nec eros condimentum maximus. Sed hendrerit et massa non facilisis. Duis commodo mauris risus, at rutrum nisi consequat vel. Donec cursus, sem sed volutpat pharetra, arcu metus volutpat lectus, quis laoreet eros massa in leo.`, 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer varius condimentum augue, et congue tellus sodales quis. Duis rhoncus arcu dictum consectetur efficitur. Nam tortor elit, cursus eu lacinia nec, pulvinar vel turpis. Cras in fringilla massa, non fermentum turpis. Etiam a velit eget neque feugiat pellentesque. Quisque euismod, justo et sodales pretium, eros sapien rutrum ipsum, et aliquet risus quam nec sapien. Nullam in nulla nec massa tincidunt bibendum at a est. Quisque in congue turpis. Interdum et malesuada fames ac ante ipsum primis in faucibus. Suspendisse bibendum faucibus felis eu accumsan. Donec accumsan libero porta euismod efficitur. Curabitur nec nisl suscipit urna suscipit aliquam nec et nibh. In malesuada nec eros condimentum maximus. Sed hendrerit et massa non facilisis. Duis commodo mauris risus, at rutrum nisi consequat vel. Donec cursus, sem sed volutpat pharetra, arcu metus volutpat lectus, quis laoreet eros massa in leo.`, [`Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer varius condimentum augue, et congue tellus sodales quis. Duis rhoncus arcu dictum consectetur efficitur. Nam tortor elit, cursus eu lacinia nec, pulvinar vel turpis. Cras in fringilla massa, non fermentum turpis. Etiam a velit eget neque feugiat pellentesque. Quisque euismod, justo et sodales pretium, eros sapien rutrum ipsum, et aliquet risus quam nec sapien. Nullam in nulla nec massa tincidunt bibendum at a est. Quisque in congue turpis. Interdum et malesuada fames ac ante ipsum primis in faucibus. Suspendisse bibendum faucibus felis eu accumsan. Donec accumsan libero porta euismod efficitur. Curabitur nec nisl suscipit urna suscipit aliquam nec et nibh. In malesuada nec eros condimentum maximus. Sed hendrerit et massa non facilisis. Duis commodo mauris risus, at rutrum nisi consequat vel. Donec cursus, sem sed volutpat pharetra, arcu metus volutpat lectus, quis laoreet eros massa in leo.'], contentPopupLastMessageIndex);
       console.error(error);
     }
+  };
+
+  const iconListener = () => {
+    setIsIconClicked(true);
   };
 
   const setupContentPopup = (template: ITemplate) => {
@@ -186,11 +187,25 @@ const PopupManager: React.FC<IPopupManager> = ({ selectedText, surroundingText, 
   }, [selectedText]);
 
   useEffect(() => {
-    aiPort.onMessage.addListener(messageListener);
+    if (isIconClicked) {
+      const windowWidth = window.innerWidth;
+      const popupWidth = 400;
+      const position = {x: windowWidth - popupWidth - 28, y: 0};
+  
+      openContentPopup(contentPopups.length, position, true);
+      setIsIconClicked(false);
+    }
+  }, [isIconClicked]);
+
+  useEffect(() => {
+    aiPort.onMessage.addListener(aiMessageListener);
+    iconPort.postMessage(null);
+    iconPort.onMessage.addListener(iconListener);
     document.body.addEventListener('mouseup', handleTemplatePopupOutsideClick)
 
     return () => {
-      aiPort.onMessage.removeListener(messageListener);
+      aiPort.onMessage.removeListener(aiMessageListener);
+      iconPort.onMessage.removeListener(iconListener);
       document.body.removeEventListener('mouseup', handleTemplatePopupOutsideClick)
     };
   }, []);
@@ -215,10 +230,11 @@ const PopupManager: React.FC<IPopupManager> = ({ selectedText, surroundingText, 
               isOpen={contentPopup.isOpen}
               topmostZIndex={topmostContentPopupZIndex}
               position={contentPopup.position}
-              selectedText={contentPopup.selectedText}
+              headerText={contentPopup.headerText}
               messages={contentPopup.messages}
               lastMessageIndex={contentPopup.lastMessageIndex}
               isFinished={contentPopup.isFinished}
+              isUserMessageFirst={contentPopup.isUserMessageFirst}
               onClose={() => closeContentPopup(index)}
               setZIndex={(zIndex) => setContentPopupZIndex(zIndex)}
               setIsFinished={(isFinished) => updatePopupContent(index, null, null, isFinished)}

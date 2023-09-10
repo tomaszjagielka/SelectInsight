@@ -49,5 +49,9 @@
     &:hover {
       background-color: #f0f0f0;
     }
+
+    &:focus {
+      outline-width: 0;
+    }
   }
 }

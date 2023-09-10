@@ -7,7 +7,7 @@ import { getPort } from '@plasmohq/messaging/port';
 import { FontAwesomeIcon, } from '@fortawesome/react-fontawesome';
 import { faTimes, faThumbTack, faPaperPlane, faEllipsis } from '@fortawesome/free-solid-svg-icons';
 import { faCopy } from '@fortawesome/free-regular-svg-icons';
-import { Rnd } from 'react-rnd'; // Import the react-rnd library
+import { Rnd } from 'react-rnd';
 
 export interface IContentPopup {
   index: number;
@@ -16,10 +16,11 @@ export interface IContentPopup {
   isOpen: boolean;
   topmostZIndex: number;
   position: { x: number; y: number };
-  selectedText: string;
+  headerText: string;
   messages: string[];
   lastMessageIndex: number;
   isFinished: boolean;
+  isUserMessageFirst: boolean;
   onClose?: () => void;
   setZIndex?: (zIndex: number) => void;
   setIsFinished?: (isFinished: boolean) => void;
@@ -32,32 +33,30 @@ const ContentPopup: React.FC<IContentPopup> = ({
   isOpen,
   position: initialPosition,
   topmostZIndex: zIndex,
-  selectedText: headerContent,
+  headerText,
   messages,
   lastMessageIndex,
   isFinished,
+  isUserMessageFirst,
   onClose,
   setZIndex,
   setIsFinished,
 }) => {
-  const [isPopupPinned, setPin] = useState(false);
-  const [position, setPopupPosition] = useState(initialPosition);
+  const [isPopupUnpinned, setPin] = useState(false);
+  const [position, setPopupPosition] = useState({ position: initialPosition, scrollPosition: { x: 0, y: 0 } });
+  const [scrollPosition, setScrollPosition] = useState({ x: 0, y: window.scrollY });
   const [popupStyle, setPopupStyle] = useState<React.CSSProperties>({
     zIndex: zIndex,
   });
   const [inputMessage, setInputMessage] = useState('');
   const [contentContainerStyle, setContentContainerStyle] = useState<React.CSSProperties>({
     maxWidth: '400px',
-    maxHeight: `${450 - 86}px`,
+    maxHeight: `${500 - 86}px`,
   });
-  // const [isRefreshing, setIsRefreshing] = useState(false);
   const [contentPopupSize, setContentPopupSize] = useState({ width: 400, height: undefined })
   const contentPopupRef = useRef(null);
+  const inputMessageRef = useRef<HTMLInputElement | null>(null);
   const aiPort = getPort('ai');
-
-  // const updatePopupPosition = (event, ui) => {
-  //   setPopupPosition({ x: ui.x, y: ui.y });
-  // };
 
   const handlePopupClick = () => {
     setPopupStyle({ ...popupStyle, zIndex: zIndex + 1 });
@@ -65,7 +64,7 @@ const ContentPopup: React.FC<IContentPopup> = ({
   };
 
   const sendMessageToAi = (message) => {
-    if (message) {
+    if (message && (isFinished || isUserMessageFirst && messages.length === 0)) {
       setInputMessage('');
       setIsFinished(false);
 
@@ -76,28 +75,27 @@ const ContentPopup: React.FC<IContentPopup> = ({
         conversationId: conversationId,
         parentMessageId: parentMessageId,
         messages: messages,
-        lastMessageIndex: lastMessageIndex + 2,
+        lastMessageIndex: isUserMessageFirst && lastMessageIndex === 0 ? lastMessageIndex + 1 : lastMessageIndex + 2,
       };
       aiPort.postMessage({ body: body });
     }
   };
 
   useEffect(() => {
-    if (isPopupPinned) {
-      setPopupPosition({ x: position.x - window.scrollX, y: position.y - window.scrollY });
+    if (isPopupUnpinned) {
+      setPopupPosition({ position: { x: position.position.x - window.scrollX, y: position.position.y - window.scrollY }, scrollPosition: { x: window.scrollX, y: window.scrollY } });
       setPopupStyle({ ...popupStyle, position: 'fixed' });
     } else {
-      setPopupPosition({ x: position.x + window.scrollX, y: position.y + window.scrollY });
+      setPopupPosition({ position: { x: position.position.x + window.scrollX, y: position.position.y + window.scrollY }, scrollPosition: { x: window.scrollX, y: window.scrollY } });
       setPopupStyle({ ...popupStyle, position: 'absolute' });
     }
-  }, [isPopupPinned, isOpen]);
+  }, [isPopupUnpinned, isOpen]);
 
-  // useEffect(() => {
-  //   if (messages) {
-  //     setIsRefreshing(false);
-  //     console.log("Sds")
-  //   }
-  // }, [messages[messages.length - 1]]);
+  useEffect(() => {
+    if (inputMessageRef.current) {
+      inputMessageRef.current.focus({ preventScroll: true });
+    }
+  }, []);
 
   return (
     <div>
@@ -120,26 +118,35 @@ const ContentPopup: React.FC<IContentPopup> = ({
             topLeft: true,
           }}
           dragHandleClassName={'header'}
-          position={position}
+          position={position.position}
           onResize={(e, direction, ref, delta, position) => {
             setContentContainerStyle({
               height: `${ref.offsetHeight - 86}px`,
             });
-            setPopupPosition(position);
+            setPopupPosition({ position, scrollPosition: { x: window.scrollX, y: window.scrollY } });
             setContentPopupSize({ width: ref.offsetWidth, height: ref.offsetHeight });
           }}
-          onDragStop={(e, d) => { setPopupPosition(d) }}
+          onDrag={(e, d) => {
+            if (isPopupUnpinned) {
+              setPopupPosition({ position: { x: d.x, y: d.y - (window.scrollY - position.scrollPosition.y) }, scrollPosition: { x: window.scrollX, y: window.scrollY } });
+            } else {
+              setPopupPosition({ position: { x: d.x, y: d.y }, scrollPosition: { x: window.scrollX, y: window.scrollY } });
+            }
+          }}
+          onDragStart={(e, d) => {
+            setPopupPosition({ position: d, scrollPosition: { x: window.scrollX, y: window.scrollY } });
+          }}
           style={popupStyle}
           ref={contentPopupRef}
         >
           {isOpen && (
             <div className='content-popup'>
               <div className='header-container'>
-                <h3 className='header'>{headerContent}</h3>
+                <h3 className='header'>{isUserMessageFirst ? 'Custom' : headerText}</h3>
                 <div className='btn-container'>
-                  <div className='pin-btn-container' onClick={() => setPin(!isPopupPinned)}>
+                  <div className='pin-btn-container' onClick={() => setPin(!isPopupUnpinned)}>
                     <FontAwesomeIcon
-                      className={`btn ${isPopupPinned ? 'pinned' : ''}`}
+                      className={`btn ${isPopupUnpinned ? 'pinned' : ''}`}
                       icon={faThumbTack}
                     />
                   </div>
@@ -148,60 +155,61 @@ const ContentPopup: React.FC<IContentPopup> = ({
                   </div>
                 </div>
               </div>
-              {!messages/* || isRefreshing*/ ? (
-                <div className='skeleton-loading'></div>
-              ) : (
+              <div>
                 <div>
-                  <div>
-                    <div className='content-container' style={contentContainerStyle}>
-                      <div className='content'>
-                        {messages.map((message, index) => (
+                  <div className='content-container' style={contentContainerStyle}>
+                    <div className='content'>
+                      {messages.map((message, index) => {
+                        const isUserMessage = isUserMessageFirst ? index % 2 === 0 : index % 2 !== 0;
+                        const messageType = isUserMessage ? 'user' : 'ai';
+
+                        return (
                           <div
                             key={index}
-                            className={`chat-message ${index % 2 !== 0 ? 'user' : 'ai'
-                              }-message-container`}
+                            className={`${messageType}-message-container`}
                           >
                             <div className='content' key={'content' + index}>
                               <Markdown>{message}</Markdown>
                             </div>
                             <CopyToClipboard text={message}>
                               <FontAwesomeIcon
-                                className={`${index % 2 !== 0 ? 'user-message' : 'ai-message'} btn copy-btn`}
+                                className={`${messageType}-message btn copy-btn`}
                                 icon={faCopy}
                               />
                             </CopyToClipboard>
                           </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                  <div className='message-input-container'>
-                    <input
-                      type='text'
-                      className='message-input'
-                      placeholder='Send a message'
-                      value={inputMessage}
-                      onChange={(e) => setInputMessage(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          sendMessageToAi(inputMessage);
-                        }
-                      }}
-                    />
-                    <div className='btn-container'>
-                      {isFinished ? (
-                        <div className='btn-container send' onClick={() => sendMessageToAi(inputMessage)}>
-                          <FontAwesomeIcon className='btn' icon={faPaperPlane} />
-                        </div>
-                      ) : (
-                        <div className='btn-container loading'>
-                          <FontAwesomeIcon className='btn' icon={faEllipsis} />
-                        </div>
-                      )}
+                        );
+                      })}
                     </div>
                   </div>
                 </div>
-              )}
+                <div className='message-input-container'>
+                  <input
+                    type='text'
+                    className='message-input'
+                    placeholder='Send a message'
+                    value={inputMessage}
+                    onChange={(e) => setInputMessage(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        sendMessageToAi(inputMessage);
+                      }
+                    }}
+                    ref={inputMessageRef}
+                  />
+                  <div className='btn-container'>
+                    {isFinished || isUserMessageFirst && messages.length === 0 ? (
+                      <div className='btn-container send' onClick={() => sendMessageToAi(inputMessage)}>
+                        <FontAwesomeIcon className='btn' icon={faPaperPlane} />
+                      </div>
+                    ) : (
+                      <div className='btn-container loading'>
+                        <FontAwesomeIcon className='btn' icon={faEllipsis} />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
           )}
         </Rnd>
