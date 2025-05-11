@@ -37,15 +37,9 @@ const Content: React.FC = () => {
 
   useEffect(() => {
     document.addEventListener('mouseup', handleMouseUp);
-    // document.body.addEventListener('mouseup', () => {
-    //   setCloseAllPopups(true);
-    // });
-
+    
     return () => {
       document.removeEventListener('mouseup', handleMouseUp);
-      // document.body.removeEventListener('mouseup', () => {
-      //   setCloseAllPopups(false);
-      // });
     };
   }, []);
 

@@ -1,8 +1,8 @@
 {
   "name": "select-insight",
-  "displayName": "Select insight",
+  "displayName": "Select Insight",
   "version": "0.0.1",
-  "description": "A basic Plasmo extension.",
+  "description": "Select text and generate ChatGPT insights.",
   "author": "Tomasz Jagiełka",
   "scripts": {
     "dev": "plasmo dev",
@@ -15,13 +15,19 @@
     "@fortawesome/free-solid-svg-icons": "^6.4.2",
     "@fortawesome/react-fontawesome": "^0.2.0",
     "@plasmohq/messaging": "^0.5.0",
+    "@plasmohq/storage": "^1.8.0",
     "markdown-to-jsx": "^7.3.2",
+    "openai": "^4.98.0",
     "plasmo": "0.82.1",
     "react": "18.2.0",
+    "react-beautiful-dnd": "^13.1.1",
     "react-copy-to-clipboard": "^5.1.0",
+    "react-dnd": "^16.0.1",
+    "react-dnd-html5-backend": "^16.0.1",
     "react-draggable": "^4.4.5",
     "react-resizable": "^3.0.5",
-    "react-rnd": "^10.4.1"
+    "react-rnd": "^10.4.1",
+    "sharp": "^0.34.1"
   },
   "devDependencies": {
     "@ianvs/prettier-plugin-sort-imports": "4.1.0",

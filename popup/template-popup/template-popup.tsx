@@ -81,6 +81,10 @@ const TemplatePopup: React.FC<ITemplatePopup> = ({ position, onSelectTemplate })
     }
   };
 
+  useEffect(() => {
+    
+  }, []);
+
   return (
     <div>
       <style>{styleText}</style>
